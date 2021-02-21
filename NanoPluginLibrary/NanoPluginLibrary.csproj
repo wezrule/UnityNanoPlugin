@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="QRCoder\**" />
+    <EmbeddedResource Remove="QRCoder\**" />
+    <None Remove="QRCoder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Chaos.NaCl.Blake2B.Core\Chaos.NaCl.Blake2B.Core.csproj">
+      <Aliases>Blake2bAlias</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="QRCoder">
+      <HintPath>QRCoder.dll</HintPath>
+    </Reference>
+    <Reference Include="QRCoder.Unity">
+      <HintPath>QRCoder.Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing.Common">
+      <HintPath>System.Drawing.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>UnityEngine.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+      <TargetFramework>netstandard2.0</TargetFramework>
+      <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+      <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="Chaos.NaCl.Blake2B.Core.csproj" />
+    <None Include="Chaos.NaCl.csproj" />
+    <None Include="Chaos.NaCl-Portable.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Blake2Core" Version="1.0.0" />
+  </ItemGroup>
+</Project>
