@@ -1,4 +1,4 @@
-﻿using NanoPluginLibrary;
+﻿using NanoPlugin;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,8 +9,8 @@ using UnityEngine.UI;
 public class NanoDemo : MonoBehaviour
 {
   // UI elements
-  public Button CreateSeedUI;
-  public Button NextSeedUI;
+  public Button CreatePrivateKeyUI;
+  public Button NextPrivateKeyUI;
   public Button GenerateWorkUI;
   public Button SendNeedsWorkUI;
   public Button ReceiveNeedsWorkUI;
@@ -41,37 +41,39 @@ public class NanoDemo : MonoBehaviour
 
   public Text WebsockConfirmationResponseUI;
 
-  public string seed;
+  public string privateKey;
   public string address;
 
-  public string arcadeSeed;
-  public string watcherSeed;
+  public string arcadePrivateKey;
+  public string watcherPrivateKey;
 
   public NanoAmount currentBalance = new NanoAmount(0);
 
   private string password = "wezrule";
-
-  private string rep = "nano_387tj8fjeo6r35ry5tjppympp8dct4d1ogpis7uaxsw8ywsrgp6shfge7two";
+  private string defaultRep = "nano_387tj8fjeo6r35ry5tjppympp8dct4d1ogpis7uaxsw8ywsrgp6shfge7two";
 
   void Start()
   {
     // Initialize RPC & Websocket
     nanoManager = gameObject.AddComponent<NanoManager>();
-    nanoManager.rpcURL = "http://95.216.164.23:28103"; // "http://127.0.0.1:28103"; // 
-    nanoManager.defaultRep = "nano_387tj8fjeo6r35ry5tjppympp8dct4d1ogpis7uaxsw8ywsrgp6shfge7two";
+    nanoManager.rpcURL = "http://95.216.164.23:28103"; // Update this url to point to your JSON-RPC server
+    nanoManager.defaultRep = defaultRep;
 
-    websocket = gameObject.AddComponent<NanoWebSocket>();
-    websocket.url = "ws://95.216.164.23:28104";  //"ws://127.0.0.1:28104";
-    nanoManager.Websocket = websocket;
+    nanoWebsocket = gameObject.AddComponent<NanoWebSocket>();
+    nanoWebsocket.url = "ws://95.216.164.23:28104"; // Update this url to point to your websocket server
+    nanoManager.Websocket = nanoWebsocket;
 
-    Debug.Log("Seed files located at: " + Path.Combine(Application.persistentDataPath, "Nano"));
+    Debug.Log("Private key files located at: " + Path.Combine(Application.persistentDataPath, "Nano"));
+
+    // Update QR codes for arcade
+    arcadePrivateKey = NanoUtils.ByteArrayToHexString(NanoUtils.GeneratePrivateKey());
 
     nanoManager.AddOnWebsocketConnectListener((bool isError, bool isReconnect) =>
    {
      // Called when the connection is successfully opened (or failed), it will automatically keep trying to connect if there is a failure
      if (!isError)
      {
-       nanoManager.ListenForPaymentWaitConfirmation(NanoUtils.PublicKeyFromPrivateKey(arcadeSeed).Address, new NanoAmount("1000000000000000000000000"), true, (error) =>
+       nanoManager.ListenForPaymentWaitConfirmation(NanoUtils.PrivateKeyToAddress(arcadePrivateKey), new NanoAmount("1000000000000000000000000"), true, (error) =>
        {
          if (!error)
          {
@@ -117,8 +119,8 @@ public class NanoDemo : MonoBehaviour
     });
 
     // Add event listeners for all the buttons
-    CreateSeedUI.onClick.AddListener(OnClickCreateSeed);
-    NextSeedUI.onClick.AddListener(OnClickNextSeed);
+    CreatePrivateKeyUI.onClick.AddListener(OnClickCreatePrivateKey);
+    NextPrivateKeyUI.onClick.AddListener(OnClickNextPrivateKey);
     GenerateWorkUI.onClick.AddListener(OnClickGenerateWork);
     SendNeedsWorkUI.onClick.AddListener(OnClickSendNeedsWork);
     ReceiveNeedsWorkUI.onClick.AddListener(OnClickReceiveNeedsWork);
@@ -133,16 +135,13 @@ public class NanoDemo : MonoBehaviour
     WatchUI.onClick.AddListener(OnClickWatch);
     UnwatchUI.onClick.AddListener(OnClickUnwatch);
 
-    // Update QR codes for arcade
-    arcadeSeed = NanoUtils.ByteArrayToHex(NanoUtils.CreateSeed());
-
     var numRawPayToPlay = "1000000000000000000000000";
-    var qrCodePayAsTexture2D = NanoUtils.GenerateQRCodeTextureWithAmount(50, NanoUtils.PublicKeyFromPrivateKey(arcadeSeed).Address, numRawPayToPlay, 50);
+    var qrCodePayAsTexture2D = NanoUtils.GenerateQRCodeTextureWithAmount(250, NanoUtils.PrivateKeyToAddress(arcadePrivateKey), numRawPayToPlay, 50);
     QRCodePayArcadeUI.sprite = Sprite.Create(qrCodePayAsTexture2D, new Rect(0.0f, 0.0f, qrCodePayAsTexture2D.width, qrCodePayAsTexture2D.height), new Vector2(0.5f, 0.5f), 100.0f);
 
-    watcherSeed = NanoUtils.ByteArrayToHex(NanoUtils.CreateSeed());
+    watcherPrivateKey = NanoUtils.ByteArrayToHexString(NanoUtils.GeneratePrivateKey());
 
-    OnClickNextSeed();
+    OnClickNextPrivateKey();
   }
 
   IEnumerator PaidArcadeHandler()
@@ -150,7 +149,7 @@ public class NanoDemo : MonoBehaviour
     // Recieve this block
 
     List<PendingBlock> pendingBlocks = null;
-    var arcadeAddress = NanoUtils.PublicKeyFromPrivateKey(arcadeSeed).Address;
+    var arcadeAddress = NanoUtils.PrivateKeyToAddress(arcadePrivateKey);
     yield return nanoManager.PendingBlocks(arcadeAddress, (responsePendingBlocks) =>
     {
       pendingBlocks = responsePendingBlocks;
@@ -161,11 +160,11 @@ public class NanoDemo : MonoBehaviour
     {
       // Returns the one with the highest amount
       var pendingBlock = pendingBlocks[0];
-      yield return nanoManager.ReceiveWaitConf(arcadeAddress, pendingBlock, arcadeSeed, (error, hash) =>
+      yield return nanoManager.ReceiveWaitConf(arcadeAddress, pendingBlock, arcadePrivateKey, (error, hash) =>
       {
         if (!error)
         {
-          var qrCodePayoutAsTexture2D = NanoUtils.GenerateQRCodeTextureWithPrivateKey(50, arcadeSeed, 50);
+          var qrCodePayoutAsTexture2D = NanoUtils.GenerateQRCodeTextureWithPrivateKey(50, arcadePrivateKey, 50);
           QRCodePayoutArcadeUI.sprite = Sprite.Create(qrCodePayoutAsTexture2D, new Rect(0.0f, 0.0f, qrCodePayoutAsTexture2D.width, qrCodePayoutAsTexture2D.height), new Vector2(0.5f, 0.5f), 100.0f);
           QRCodePayArcadeUI.sprite = null;
 
@@ -175,11 +174,11 @@ public class NanoDemo : MonoBehaviour
           {
             if (!errorPayout)
             {
-              PayoutArcadeUI.text = "Extracted seed";
+              PayoutArcadeUI.text = "Extracted privateKey";
             }
             else
             {
-              PayoutArcadeUI.text = "Seed expired";
+              PayoutArcadeUI.text = "PrivateKey expired";
               Debug.Log("Did not retrieve the payout fast enough");
             }
             QRCodePayoutArcadeUI.sprite = null;
@@ -193,10 +192,10 @@ public class NanoDemo : MonoBehaviour
     }
   }
 
-  void SeedChanged()
+  void PrivateKeyChanged()
   {
     // Update the public key text element
-    address = NanoUtils.PublicKeyFromPrivateKey(seed).Address;
+    address = NanoUtils.PrivateKeyToAddress(privateKey);
     PublicKeyUI.text = address;
 
     // Update QRcode for topping up funds
@@ -204,35 +203,42 @@ public class NanoDemo : MonoBehaviour
     QRCodeTopUpUI.sprite = Sprite.Create(qrCodeAsTexture2D, new Rect(0.0f, 0.0f, qrCodeAsTexture2D.width, qrCodeAsTexture2D.height), new Vector2(0.5f, 0.5f), 100.0f);
   }
 
-  void OnClickCreateSeed()
+  void OnClickCreatePrivateKey()
   {
-    seed = NanoUtils.ByteArrayToHex(NanoUtils.CreateSeed());
+    privateKey = NanoUtils.ByteArrayToHexString(NanoUtils.GeneratePrivateKey());
     TimeSpan t = DateTime.UtcNow - new DateTime(1970, 1, 1);
-    var filename = "encrypted_seed_" + (int)t.TotalSeconds + ".nano";
+    var filename = "encrypted_privateKey_" + (int)t.TotalSeconds + ".nano";
 
-    // Save the seed to disk
-    NanoUtils.SaveSeed(seed, filename, password);
-    SeedChanged();
+    // Save the private key to disk
+    NanoUtils.SavePrivateKey(privateKey, filename, password);
+    PrivateKeyChanged();
+    LastWorkUI.text = ""; // Clear last work
   }
 
-  // Loop through all the local seed files, and display any which can be decrypted with the default password
-  private int seedIndex = 0;
-  void OnClickNextSeed()
+  // Loop through all the local private key files, and display any which can be decrypted with the default password
+  private int privateKeyIndex = 0;
+  void OnClickNextPrivateKey()
   {
-    var seedFiles = NanoUtils.GetSeedFiles();
-    if (seedFiles.Length > 0)
+    var privateKeyFiles = NanoUtils.GetPrivateKeyFiles();
+    if (privateKeyFiles.Length > 0)
     {
-      var seedFile = seedFiles[seedIndex];
-      seed = NanoUtils.GetPlainSeed(seedFile, password);
-      if (!String.IsNullOrEmpty(seed))
+      var privateKeyFile = privateKeyFiles[privateKeyIndex];
+      privateKey = NanoUtils.LoadPrivateKey(privateKeyFile, password);
+      if (!String.IsNullOrEmpty(privateKey))
       {
-        SeedChanged();
+        PrivateKeyChanged();
       }
-      ++seedIndex;
-      if (seedIndex >= seedFiles.Length - 0)
+      ++privateKeyIndex;
+      if (privateKeyIndex >= privateKeyFiles.Length - 1)
       {
-        seedIndex = 0;
+        privateKeyIndex = 0;
       }
+    }
+    if (privateKeyFiles.Length > 1)
+    {
+      LastWorkUI.text = ""; // Clear some fields
+      BalanceUI.text = "";
+      PendingBalanceUI.text = "";
     }
   }
 
@@ -273,23 +279,32 @@ public class NanoDemo : MonoBehaviour
 
     // First we get the frontier
     string previous = null;
-    yield return nanoManager.AccountFrontier(address, (hash) =>
+    string rep = null;
+    yield return nanoManager.AccountInfo(address, (accountInfo) =>
     {
-      previous = hash;
+      previous = accountInfo.frontier;
+      rep = accountInfo.representative;
     });
 
-    // Create the block to send
-    var newBalance = currentBalance - new NanoAmount(System.Numerics.BigInteger.Parse("1000000000000000000000000"));
-    var block = nanoManager.CreateBlock(address, NanoUtils.HexStringToByteArray(seed), newBalance, NanoUtils.PublicKeyFromPrivateKey(watcherSeed).Key, previous, rep, LastWorkUI.text);
-    yield return nanoManager.Process(block, BlockType.send, (hash) =>
-   {
-     if (hash != null)
+    if (previous != null)
+    {
+      // Create the block to send
+      var newBalance = currentBalance - new NanoAmount(System.Numerics.BigInteger.Parse("1000000000000000000000000"));
+      var block = nanoManager.CreateBlock(address, NanoUtils.HexStringToByteArray(privateKey), newBalance, NanoUtils.PrivateKeyToPublicKeyHexString(watcherPrivateKey), previous, rep, LastWorkUI.text);
+      yield return nanoManager.Process(block, BlockType.send, (hash) =>
      {
-       LastWorkUI.text = ""; // Clear it
-     }
+       if (hash != null)
+       {
+         LastWorkUI.text = ""; // Clear it
+       }
 
-     Debug.Log(hash);
-   });
+       Debug.Log(hash);
+     });
+    }
+    else
+    {
+      Debug.Log("Account does not exist yet");
+    }
   }
 
   void OnClickReceiveNeedsWork()
@@ -306,9 +321,11 @@ public class NanoDemo : MonoBehaviour
 
     // First we get the frontier
     string previous = null;
-    yield return nanoManager.AccountFrontier(address, (hash) =>
+    string rep = null;
+    yield return nanoManager.AccountInfo(address, (accountInfo) =>
     {
-      previous = hash;
+      previous = accountInfo.frontier;
+      rep = accountInfo.representative;
     });
 
     List<PendingBlock> pendingBlocks = null;
@@ -317,21 +334,28 @@ public class NanoDemo : MonoBehaviour
       pendingBlocks = responsePendingBlocks;
     });
 
-    // Just get the first one as it will have the highest amount
-    var pendingBlock = pendingBlocks[0];
-
-    // Create the block to receive
-    var newBalance = currentBalance + pendingBlock.amount;
-    var block = nanoManager.CreateBlock(address, NanoUtils.HexStringToByteArray(seed), newBalance, pendingBlock.source, previous, rep, LastWorkUI.text);
-    yield return nanoManager.Process(block, previous == null ? BlockType.open : BlockType.receive, (hash) =>
+    if (pendingBlocks.Count != 0)
     {
-      if (hash != null)
-      {
-        LastWorkUI.text = ""; // Clear it
-      }
+      // Just get the first one as it will have the highest amount
+      var pendingBlock = pendingBlocks[0];
 
-      Debug.Log(hash);
-    });
+      // Create the block to receive
+      var newBalance = currentBalance + pendingBlock.amount;
+      var block = nanoManager.CreateBlock(address, NanoUtils.HexStringToByteArray(privateKey), newBalance, pendingBlock.source, previous, rep != null ? rep : defaultRep, LastWorkUI.text);
+      yield return nanoManager.Process(block, previous == null ? BlockType.open : BlockType.receive, (hash) =>
+      {
+        if (hash != null)
+        {
+          LastWorkUI.text = ""; // Clear it
+        }
+
+        Debug.Log(hash);
+      });
+    }
+    else
+    {
+      Debug.Log("There are no pending blocks to receive");
+    }
   }
 
   void OnClickSend()
@@ -341,9 +365,16 @@ public class NanoDemo : MonoBehaviour
 
   private IEnumerator SendHandler()
   {
-    yield return nanoManager.Send(address, NanoUtils.PublicKeyFromPrivateKey(NanoUtils.HexStringToByteArray(watcherSeed)).Address, rep, new NanoAmount("1000000000000000000000000"), seed, (error, hash) =>
+    yield return nanoManager.Send(NanoUtils.PrivateKeyToAddress(watcherPrivateKey), new NanoAmount("1000000000000000000000000"), privateKey, (error, hash) =>
     {
-      Debug.Log("Send wait confirmed!!");
+      if (!error)
+      {
+        Debug.Log("Send confirmed!!");
+      }
+      else
+      {
+        Debug.Log("Error with Send");
+      }
     });
   }
 
@@ -364,7 +395,7 @@ public class NanoDemo : MonoBehaviour
     if (pendingBlocks != null && pendingBlocks.Count > 0)
     {
       var pendingBlock = pendingBlocks[0];
-      yield return nanoManager.Receive(address, pendingBlock, seed, (error, callback) =>
+      yield return nanoManager.Receive(address, pendingBlock, privateKey, (error, callback) =>
       {
       });
     }
@@ -381,7 +412,8 @@ public class NanoDemo : MonoBehaviour
 
   IEnumerator SendWaitConfHandler()
   {
-    yield return nanoManager.SendWaitConf(address, NanoUtils.PublicKeyFromPrivateKey(NanoUtils.HexStringToByteArray(watcherSeed)).Address, rep, new NanoAmount("1000000000000000000000000"), seed, (error, hash) =>
+    var amount = new NanoAmount(NanoUtils.NanoToRaw("0.000001"));
+    yield return nanoManager.SendWaitConf(NanoUtils.PrivateKeyToAddress(watcherPrivateKey), amount, privateKey, (error, hash) =>
     {
       if (!error)
       {
@@ -411,7 +443,7 @@ public class NanoDemo : MonoBehaviour
     if (pendingBlocks != null && pendingBlocks.Count > 0)
     {
       var pendingBlock = pendingBlocks[0];
-      yield return nanoManager.ReceiveWaitConf(address, pendingBlock, seed, (error, hash) =>
+      yield return nanoManager.ReceiveWaitConf(address, pendingBlock, privateKey, (error, hash) =>
     {
       if (!error)
       {
@@ -431,7 +463,7 @@ public class NanoDemo : MonoBehaviour
 
   void OnClickAutomatePocketing()
   {
-    nanoManager.AutomatePocketing(address, seed, (block) =>
+    nanoManager.AutomatePocketing(address, privateKey, (block) =>
     {
       Debug.Log("Automatically pocketed");
     });
@@ -455,7 +487,7 @@ public class NanoDemo : MonoBehaviour
   private int lastWatcherId = 0;
   void OnClickWatch()
   {
-    lastWatcherId = nanoManager.Watch(NanoUtils.PublicKeyFromPrivateKey(NanoUtils.HexStringToByteArray(watcherSeed)).Address, (watcherInfo) =>
+    lastWatcherId = nanoManager.Watch(NanoUtils.PrivateKeyToAddress(watcherPrivateKey), (watcherInfo) =>
     {
       WatchedUI.text = watcherInfo.hash;
     });
@@ -463,7 +495,7 @@ public class NanoDemo : MonoBehaviour
 
   void OnClickUnwatch()
   {
-    nanoManager.Unwatch(NanoUtils.PublicKeyFromPrivateKey(NanoUtils.HexStringToByteArray(watcherSeed)).Address, lastWatcherId);
+    nanoManager.Unwatch(NanoUtils.PrivateKeyToAddress(watcherPrivateKey), lastWatcherId);
   }
 
   // Update is called once per frame
@@ -472,8 +504,8 @@ public class NanoDemo : MonoBehaviour
     StartCoroutine(UpdatePendingAndBalance());
   }
 
-  // Every 2 seconds poll for some things in case the websocket missed them
-  private float updateTimer = 2;
+  // Every 1 second poll for some things in case the websocket missed them
+  private float updateTimer = 1;
   private float time = 0;
   IEnumerator UpdatePendingAndBalance()
   {
@@ -494,6 +526,6 @@ public class NanoDemo : MonoBehaviour
     }
   }
 
-  private NanoWebSocket websocket;
+  private NanoWebSocket nanoWebsocket;
   private NanoManager nanoManager;
 }

@@ -40,7 +40,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 
-namespace NanoPluginLibrary
+namespace NanoPlugin
 {
   public enum JSONNodeType
   {

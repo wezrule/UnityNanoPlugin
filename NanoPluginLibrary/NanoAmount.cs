@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Numerics;
 
-namespace NanoPluginLibrary
+namespace NanoPlugin
 {
   public class NanoAmount
   {

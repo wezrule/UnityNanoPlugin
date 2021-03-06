@@ -29,7 +29,7 @@ dpow_wss.onopen = () => {
 
   // dPOW sent us a message
   dpow_wss.onmessage = (msg) => {
-    console.log("DPOW message");
+
     let data_json = JSON.parse(msg.data);
     let value_l = dpow_request_map.get(data_json.id);
     if (typeof value_l !== "undefined") {
@@ -57,7 +57,7 @@ app.post("/", (req, res) => {
 
   let action = obj.action;
   if (action == "work_generate" && config.dpow.enabled && using_dpow) {
-    console.log("DPOW work");
+
     // Send to the dpow server and return the same request
     ++id;
     const dpow_request = {

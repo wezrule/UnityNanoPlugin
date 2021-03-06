@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace NanoPluginLibrary
+namespace NanoPlugin
 {
   public class PendingBlock
   {
@@ -268,7 +268,7 @@ namespace NanoPluginLibrary
 
     public IEnumerator WorkGenerate(string address, string previous, Action<string> callback)
     {
-      var hashForWork = previous == null ? NanoUtils.ByteArrayToHex(NanoUtils.AddressToPublicKey(address)) : previous;
+      var hashForWork = previous == null ? NanoUtils.AddressToPublicKeyHexString(address) : previous;
       yield return rpc.WorkGenerate(hashForWork, (response) =>
       {
         callback(JsonUtility.FromJson<WorkGenerateResponse>(response).work);
@@ -288,7 +288,7 @@ namespace NanoPluginLibrary
       yield return rpc.AccountBalance(address, (response) =>
       {
         var accountBalanceResponse = JsonUtility.FromJson<AccountBalanceResponse>(response);
-        if (accountBalanceResponse.balance != null)
+        if (accountBalanceResponse != null && accountBalanceResponse.balance != null)
         {
           callback(new NanoAmount(System.Numerics.BigInteger.Parse(accountBalanceResponse.balance)), new NanoAmount(System.Numerics.BigInteger.Parse(accountBalanceResponse.pending)));
         }
@@ -312,13 +312,16 @@ namespace NanoPluginLibrary
       List<PendingBlock> pendingBlocks = new List<PendingBlock>();
       yield return rpc.PendingBlocks(address, (responsePending) =>
       {
-        var json = JSON.Parse(responsePending);
-        foreach (System.Collections.Generic.KeyValuePair<string, JSONNode> kvp in json["blocks"])
+        if (responsePending != null)
         {
-          PendingBlock pendingBlock = new PendingBlock();
-          pendingBlock.source = kvp.Key;
-          pendingBlock.amount = new NanoAmount((string)kvp.Value);
-          pendingBlocks.Add(pendingBlock);
+          var json = JSON.Parse(responsePending);
+          foreach (System.Collections.Generic.KeyValuePair<string, JSONNode> kvp in json["blocks"])
+          {
+            PendingBlock pendingBlock = new PendingBlock();
+            pendingBlock.source = kvp.Key;
+            pendingBlock.amount = new NanoAmount((string)kvp.Value);
+            pendingBlocks.Add(pendingBlock);
+          }
         }
       });
 
@@ -349,15 +352,18 @@ namespace NanoPluginLibrary
       });
     }
 
-    public IEnumerator Send(string fromAddress, string toAddress, string rep, NanoAmount amount, string privateKey, string work, Action<bool, string> callback)
+    public IEnumerator Send(string toAddress, NanoAmount amount, string privateKey, string work, Action<bool, string> callback)
     {
       // First we get the frontier
       NanoAmount currentBalance = null;
       string previous = null;
+      string rep = defaultRep;
+      string fromAddress = NanoUtils.PrivateKeyToAddress(privateKey);
       yield return AccountInfo(fromAddress, (accountInfo) =>
       {
         currentBalance = new NanoAmount(accountInfo.balance);
         previous = accountInfo.frontier;
+        rep = accountInfo.representative;
       });
 
       if (previous != null)
@@ -375,7 +381,7 @@ namespace NanoPluginLibrary
         {
           // Create the block to send
           var newBalance = currentBalance - amount;
-          var block = CreateBlock(fromAddress, NanoUtils.HexStringToByteArray(privateKey), newBalance, NanoUtils.ByteArrayToHex(NanoUtils.AddressToPublicKey(toAddress)), previous, rep, work);
+          var block = CreateBlock(fromAddress, NanoUtils.HexStringToByteArray(privateKey), newBalance, NanoUtils.AddressToPublicKeyHexString(toAddress), previous, rep, work);
           yield return Process(block, BlockType.send, (hash) =>
           {
             if (hash != null)
@@ -402,9 +408,9 @@ namespace NanoPluginLibrary
       }
     }
 
-    public IEnumerator Send(string fromAddress, string toAddress, string rep, NanoAmount amount, string privateKey, Action<bool, string> callback)
+    public IEnumerator Send(string toAddress, NanoAmount amount, string privateKey, Action<bool, string> callback)
     {
-      yield return Send(fromAddress, toAddress, rep, amount, privateKey, null, callback);
+      yield return Send(toAddress, amount, privateKey, null, callback);
     }
 
     public IEnumerator Receive(string address, PendingBlock pendingBlock, string privateKey, string work, Action<bool, string> callback)
@@ -413,7 +419,6 @@ namespace NanoPluginLibrary
       NanoAmount currentBalance = null;
       string previous = null;
       var rep = defaultRep;
-      Debug.Log(rep);
 
       yield return AccountInfo(address, (accountInfo) =>
       {
@@ -478,9 +483,9 @@ namespace NanoPluginLibrary
     private Dictionary<string, Action<bool, string>> blockListener = new Dictionary<string, Action<bool, string>>();
     private Dictionary<string, KeyCallback> keyListeners = new Dictionary<string, KeyCallback>(); // For automatic pocketing
 
-    public IEnumerator SendWaitConf(string fromAddress, string toAddress, string rep, NanoAmount amount, string privateKey, Action<bool, string> callback)
+    public IEnumerator SendWaitConf(string toAddress, NanoAmount amount, string privateKey, Action<bool, string> callback)
     {
-      yield return Send(fromAddress, toAddress, rep, amount, privateKey, (error, hash) =>
+      yield return Send(toAddress, amount, privateKey, (error, hash) =>
       {
         if (error)
         {
@@ -522,7 +527,7 @@ namespace NanoPluginLibrary
 
     void Start()
     {
-      rpc = new NanoPluginLibrary.RPC(rpcURL);
+      rpc = new NanoPlugin.RPC(rpcURL);
     }
 
     void Update()
@@ -646,7 +651,7 @@ namespace NanoPluginLibrary
       }
     }
 
-    private NanoPluginLibrary.RPC rpc;
+    private NanoPlugin.RPC rpc;
     private NanoWebSocket websocket;
     public NanoWebSocket Websocket
     {

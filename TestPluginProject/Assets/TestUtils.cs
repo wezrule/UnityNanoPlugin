@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using NanoPluginLibrary;
+using NanoPlugin;
 
 public class TestUtils : MonoBehaviour
 {
@@ -275,23 +275,22 @@ public class TestUtils : MonoBehaviour
     var amount = new NanoAmount(100);
 
     byte[] bytes = NanoUtils.HexStringToByteArray("E989DE925A4EDEE45447158557AD1409450315491F147F4AAA8F37DCA355354A");
-    var key = new PublicKey(bytes);
 
-    byte[] b = NanoUtils.AddressToPublicKey("nano_3kqdiqmqiojr1aqqj51aq8bzz5jtwnkmhb38qwf3ppngo8uhhzkdkn7up7rp");
+    byte[] b = NanoUtils.AddressToPublicKeyByteArray("nano_3kqdiqmqiojr1aqqj51aq8bzz5jtwnkmhb38qwf3ppngo8uhhzkdkn7up7rp");
     string s1 = NanoUtils.SignHash("E989DE925A4EDEE45447158557AD1409450315491F147F4AAA8F37DCA355354A", bytes);
     string s2 = NanoUtils.PublicKeyToAddress(bytes);
-    string s3 = NanoUtils.ByteArrayToHex(bytes);
+    string s3 = NanoUtils.ByteArrayToHexString(bytes);
 
-    var seed = NanoUtils.CreateSeed();
+    var prvKey = NanoUtils.GeneratePrivateKey();
     var password = "cheese_cake" + new Random();
-    var filename = "seed1.nano";
+    var filename = "privateKey1.nano";
 
-    NanoUtils.SaveSeed(NanoUtils.ByteArrayToHex(seed), filename, password);
-    var originalSeed = NanoUtils.ByteArrayToHex(seed);
-    var extractedSeed = NanoUtils.GetPlainSeed(filename, password);
-    if (!originalSeed.Equals(extractedSeed))
+    NanoUtils.SavePrivateKey(NanoUtils.ByteArrayToHexString(prvKey), filename, password);
+    var originalPrivateKey = NanoUtils.ByteArrayToHexString(prvKey);
+    var extractedPrivateKey = NanoUtils.LoadPrivateKey(filename, password);
+    if (!originalPrivateKey.Equals(extractedPrivateKey))
     {
-      Debug.Log("Error decrypting seed");
+      Debug.Log("Error decrypting privateKey");
       return;
     }
 

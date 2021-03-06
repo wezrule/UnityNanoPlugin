@@ -64,25 +64,7 @@ app.post("/", (req, res) => {
     "work_generate",
   ];
 
-  if (action == "work_generate" && config.dpow.enabled && using_dpow) {
-    console.log("DPOW work");
-    // Send to the dpow server and return the same request
-    ++id;
-    const dpow_request = {
-      user: config.dpow.user,
-      api_key: config.dpow.api_key,
-      hash: obj.hash,
-      id: id,
-    };
-
-    let value = {};
-    value.res = res;
-    value.hash = obj.hash;
-    dpow_request_map.set(id, value);
-
-    // Send a request to the dpow server
-    dpow_wss.send(JSON.stringify(dpow_request));
-  } else if (allowed_actions.includes(action)) {
+  if (allowed_actions.includes(action)) {
     // Just forward to RPC server. TODO: Should probably check for validity
 
     if (action == "work_generate") {

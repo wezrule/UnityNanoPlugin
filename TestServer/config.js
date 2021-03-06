@@ -3,7 +3,7 @@ let config = {};
 // If you don't need all websocket confirmations, then set this to false!
 config.allow_listen_all = false;
 
-// The host and port which calls from Unity plugin clients will call to access RPC commands indirectly and other things.
+// The host and port which calls from Unreal Engine plugin clients will call to access RPC commands indirectly and other things.
 // In the test level it uses a publically available server for simple testing, do not abuse it or you will be IP banned.
 // In this file it is configured to use localhost, update it to your remote server IP when launched there.
 config.hostname = "127.0.0.1";

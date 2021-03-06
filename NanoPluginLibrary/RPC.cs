@@ -5,7 +5,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace NanoPluginLibrary
+namespace NanoPlugin
 {
   public class RPC
   {
@@ -121,7 +121,7 @@ namespace NanoPluginLibrary
   [Serializable]
   public class WorkGenerateRequest
   {
-    public string action = "work_generate_rpc";
+    public string action = "work_generate";
     public string hash;
   }
 

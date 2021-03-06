@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using NativeWebSocket;
 using UnityEngine;
 
-namespace NanoPluginLibrary
+namespace NanoPlugin
 {
   public delegate void OnClose();
   public delegate void OnConfirmation(WebsocketConfirmationResponseData responseData);
@@ -16,7 +16,7 @@ namespace NanoPluginLibrary
     bool isListeningAll = false;
     bool isReconnection = false;
 
-    Dictionary<PublicKey, int> registeredAccounts = new Dictionary<PublicKey, int>(); // account and number of times it was registered
+    Dictionary<string, int> registeredAccounts = new Dictionary<string, int>(); // public key hex string and number of times it was registered
 
     public List<OnOpen> openDelegates = new List<OnOpen>();
     public List<OnConfirmation> filteredConfirmationDelegates = new List<OnConfirmation>();
@@ -42,7 +42,7 @@ namespace NanoPluginLibrary
         {
           AccountRegisterRequest request = new AccountRegisterRequest
           {
-            account = registeredAccount.Key.Address,
+            account = NanoUtils.PublicKeyToAddress (registeredAccount.Key),
             action = "register_account"
           };
           await websocket.SendText(JsonUtility.ToJson(request));
@@ -119,14 +119,14 @@ namespace NanoPluginLibrary
     public async void RegisterAccount(String address)
     {
       int count;
-      PublicKey account = new PublicKey(NanoUtils.AddressToPublicKey(address));
-      if (registeredAccounts.TryGetValue(account, out count))
+      var publicKey = NanoUtils.AddressToPublicKeyHexString(address);
+      if (registeredAccounts.TryGetValue(publicKey, out count))
       {
-        registeredAccounts[account]++;
+        registeredAccounts[publicKey]++;
       }
       else
       {
-        registeredAccounts[account] = 1;
+        registeredAccounts[publicKey] = 1;
         if (websocket == null || websocket.State != WebSocketState.Open)
         {
           // Don't send if we're not connected.
@@ -142,14 +142,14 @@ namespace NanoPluginLibrary
     public async void UnregisterAccount(string address)
     {
       int count;
-      PublicKey account = new PublicKey(NanoUtils.AddressToPublicKey(address));
-      if (registeredAccounts.TryGetValue(account, out count))
+      var publicKey = NanoUtils.AddressToPublicKeyHexString(address);
+      if (registeredAccounts.TryGetValue(publicKey, out count))
       {
-        registeredAccounts[account]--;
+        registeredAccounts[publicKey]--;
       }
       else
       {
-        registeredAccounts.Remove(account);
+        registeredAccounts.Remove(publicKey);
         if (websocket == null || websocket.State != WebSocketState.Open)
         {
           return;

@@ -11,14 +11,14 @@ using UnityEngine;
 using QRCoder;
 using QRCoder.Unity;
 
-namespace NanoPluginLibrary
+namespace NanoPlugin
 {
   public static class NanoUtils
   {
     private static Dictionary<char, string> nano_addressEncoding;
     private static Dictionary<string, char> nano_addressDecoding;
 
-    public static byte[] CreateSeed()
+    public static byte[] GeneratePrivateKey()
     {
       RNGCryptoServiceProvider rngCsp = new RNGCryptoServiceProvider();
       byte[] randomNumber = new byte[32];
@@ -194,16 +194,6 @@ namespace NanoPluginLibrary
       return str.Substring(0, str.Length - index);
     }
 
-    public static PublicKey PublicKeyFromPrivateKey(byte[] privateKey)
-    {
-      return new PublicKey(Ed25519.PublicKeyFromSeed(privateKey));
-    }
-
-    public static PublicKey PublicKeyFromPrivateKey(string privateKey)
-    {
-      return PublicKeyFromPrivateKey(HexStringToByteArray(privateKey));
-    }
-
     public static string GetBlockTypeStr(BlockType blockType)
     {
       return Enum.GetName(typeof(BlockType), blockType);
@@ -236,7 +226,7 @@ namespace NanoPluginLibrary
         myAes.Key = key;
         myAes.IV = iv;
         // Encrypt the string to an array of bytes.
-        return ByteArrayToHex(EncryptStringToBytes_Aes(plainSeed, myAes.Key, myAes.IV));
+        return ByteArrayToHexString(EncryptStringToBytes_Aes(plainSeed, myAes.Key, myAes.IV));
       }
     }
     static string Decrypt(string cipherSeed, string password)
@@ -318,17 +308,14 @@ namespace NanoPluginLibrary
             {
               using (StreamReader srDecrypt = new StreamReader(csDecrypt))
               {
-
                 // Read the decrypted bytes from the decrypting stream
                 // and place them in a string.
-
-
                 plaintext = srDecrypt.ReadToEnd();
               }
             }
           }
         }
-        catch (Exception e)
+        catch (Exception)
         {
           plaintext = String.Empty;
         }
@@ -346,27 +333,27 @@ namespace NanoPluginLibrary
       return qrCodeAsTexture2D;
     }
 
-    public static Texture2D GenerateQRCodeTextureOnlyAccount(Int32 Size, string account, Int32 Margin)
+    public static Texture2D GenerateQRCodeTextureOnlyAccount(int Size, string account, int Margin)
     {
       string qrString = "nano:" + account;
       return GenerateQRCodeTexture(Size, qrString, Margin);
     }
 
-    public static Texture2D GenerateQRCodeTextureWithPrivateKey(Int32 Size, string privateKey, Int32 Margin)
+    public static Texture2D GenerateQRCodeTextureWithPrivateKey(int size, string privateKey, int margin)
     {
       string qrString = privateKey.ToUpper();
-      return GenerateQRCodeTexture(Size, qrString, Margin);
+      return GenerateQRCodeTexture(size, qrString, margin);
     }
 
     public static Texture2D GenerateQRCodeTextureWithAmount(
-      Int32 Size, string account, string amount, Int32 Margin)
+      int size, string account, string amount, int margin)
     {
       string qrString = "nano:" + account;
       if (amount != "")
       {
         qrString += "?amount=" + amount;
       }
-      return GenerateQRCodeTexture(Size, qrString, Margin);
+      return GenerateQRCodeTexture(size, qrString, margin);
     }
     static NanoUtils()
     {
@@ -391,7 +378,7 @@ namespace NanoPluginLibrary
                            .ToArray();
     }
 
-    public static string ByteArrayToHex(byte[] bytes)
+    public static string ByteArrayToHexString(byte[] bytes)
     {
       var hex = new StringBuilder();
       for (int j = 0; j < bytes.Length; j++)
@@ -413,7 +400,11 @@ namespace NanoPluginLibrary
       address += NanoEncode(checksumBytes.Reverse().ToArray(), false);
 
       return address;
+    }
 
+    public static string PublicKeyToAddress(string publicKey)
+    {
+      return PublicKeyToAddress(HexStringToByteArray(publicKey));
     }
 
     private static string NanoEncode(byte[] bytes, bool padZeros = true)
@@ -434,7 +425,32 @@ namespace NanoPluginLibrary
       return result;
     }
 
-    public static byte[] AddressToPublicKey(string address)
+    public static string PrivateKeyToAddress(byte[] privateKey)
+    {
+      return PublicKeyToAddress(Ed25519.PublicKeyFromSeed(privateKey));
+    }
+
+    public static string PrivateKeyToAddress(string privateKey)
+    {
+      return PrivateKeyToAddress(HexStringToByteArray(privateKey));
+    }
+
+    public static string PrivateKeyToPublicKeyHexString(byte[] privateKey)
+    {
+      return ByteArrayToHexString(Ed25519.PublicKeyFromSeed(privateKey));
+    }
+
+    public static string PrivateKeyToPublicKeyHexString(string privateKey)
+    {
+      return ByteArrayToHexString(Ed25519.PublicKeyFromSeed(HexStringToByteArray (privateKey)));
+    }
+
+    public static string AddressToPublicKeyHexString(string address)
+    {
+      return ByteArrayToHexString(AddressToPublicKeyByteArray(address));
+    }
+
+    public static byte[] AddressToPublicKeyByteArray(string address)
     {
       // Check length is valid
       if (address.Length != 65)
@@ -474,8 +490,8 @@ namespace NanoPluginLibrary
 
     public static string HashStateBlock(string accountAddress, string previousHash, string balance, string representativeAccount, string link)
     {
-      var representativePublicKey = AddressToPublicKey(representativeAccount);
-      var accountPublicKey = AddressToPublicKey(accountAddress);
+      var representativePublicKey = AddressToPublicKeyByteArray(representativeAccount);
+      var accountPublicKey = AddressToPublicKeyByteArray(accountAddress);
       var previousBytes = HexStringToByteArray(previousHash);
 
       var balanceHex = BigInteger.Parse(balance).ToString("X");
@@ -499,27 +515,28 @@ namespace NanoPluginLibrary
       blake.Update(linkBytes);
 
       var hashBytes = blake.Finish();
-      return ByteArrayToHex(hashBytes);
+      return ByteArrayToHexString(hashBytes);
     }
 
     public static string SignHash(string hash, byte[] privateKey)
     {
-      var publicKey = Ed25519.PublicKeyFromSeed(privateKey);
       var signature = Ed25519.Sign(HexStringToByteArray(hash), Ed25519.ExpandedPrivateKeyFromSeed(privateKey));
-      return ByteArrayToHex(signature);
+      return ByteArrayToHexString(signature);
     }
 
-    public static void SaveSeed(string plainSeed, string seedFilename, string password)
+    // Encrypts the private key with the password and saved to this file
+    public static void SavePrivateKey(string plainSeed, string seedFilename, string password)
     {
       var cypherText = Encrypt(plainSeed, password);
 
-      string destination = Path.Combine (Application.persistentDataPath, "Nano", seedFilename);
-        System.IO.FileInfo file = new System.IO.FileInfo(destination);
-        file.Directory.Create(); // If the directory already exists, this method does nothing.
-        File.WriteAllText(file.FullName, cypherText);
+      string destination = Path.Combine(Application.persistentDataPath, "Nano", seedFilename);
+      System.IO.FileInfo file = new System.IO.FileInfo(destination);
+      file.Directory.Create(); // If the directory already exists, this method does nothing.
+      File.WriteAllText(file.FullName, cypherText);
     }
 
-    public static string GetPlainSeed(string seedFilename, string password)
+    // Loads the file and decrypts the encrypted private key with the password
+    public static string LoadPrivateKey(string seedFilename, string password)
     {
       string file = Path.Combine(Application.persistentDataPath, "Nano", seedFilename);
 
@@ -535,11 +552,12 @@ namespace NanoPluginLibrary
       }
     }
 
-    public static string[] GetSeedFiles()
+    public static string[] GetPrivateKeyFiles()
     {
       // Loop through all files in data path
       string directory = Path.Combine(Application.persistentDataPath, "Nano");
-      if (Directory.Exists(directory)) {
+      if (Directory.Exists(directory))
+      {
         return Directory.EnumerateFiles(directory).Select(Path.GetFileName).ToArray();
       }
       else
@@ -557,35 +575,4 @@ namespace NanoPluginLibrary
     open,
     change
   }
-
-  public class PublicKey
-  {
-    public PublicKey(byte[] bytes)
-    {
-      Bytes = bytes;
-    }
-
-    public string Key => NanoUtils.ByteArrayToHex(Bytes);
-
-    public byte[] Bytes { get; }
-
-    private string address;
-    public string Address
-    {
-      get
-      {
-        if (address == null)
-        {
-          address = NanoUtils.PublicKeyToAddress(Bytes);
-        }
-        return address;
-      }
-    }
-
-    public override int GetHashCode()
-    {
-      return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Bytes);
-    }
-  }
-
 }
