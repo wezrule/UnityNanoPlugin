@@ -67,6 +67,5 @@ tags
 # node.js server files
 TestServer/node_modules
 
-NanoPluginLibrary/bin/
-TestPluginProject/bin/
-TestPluginProject/Library
+NanoPlugin/Library
+NanoPlugin/Assets/AssetStoreTools
