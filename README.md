@@ -1,5 +1,7 @@
 # NanoPlugin
-Plugin for integrating the Nano cryptocurrency into Unity.
+Plugin for integrating the Nano cryptocurrency into Unity.  
+
+Available on the [Unity asset store](https://assetstore.unity.com/packages/tools/integration/nano-190960)  
 
 Tested on Windows/Linux/MacOS/Android/iOS/HTML with Unity 2020.3.2f1
 
